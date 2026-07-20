@@ -47,7 +47,6 @@ export default function SignUpPage() {
 
           {success ? (
             <div className="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-full text-center">
-              <span className="text-2xl mr-2">🎉</span>
               Account created successfully! Redirecting to login...
             </div>
           ) : (
