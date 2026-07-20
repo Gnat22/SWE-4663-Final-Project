@@ -8,8 +8,7 @@ export default function Navbar() {
   const router = useRouter()
   const supabase = createClient()
 
-  // Don't show navbar on login and signup pages
-  if (pathname === '/login' || pathname === '/signup') {
+  if (pathname === '/login' || pathname === '/signup' || pathname == '/') {
     return null
   }
 
@@ -24,7 +23,7 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 bg-white shadow-md">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Brand/Logo */}
+          {/* App Name */}
           <div className="flex items-center">
             <span className="text-xl font-semibold text-slate-800">
               AppName
