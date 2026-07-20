@@ -20,12 +20,6 @@ export default function Dashboard() {
   const [userId, setUserId] = useState<string | null>(null)
 
   const [projects, setProjects] = useState<Project[]>([])
-  const [isCreatingProject, setIsCreatingProject] = useState(false)
-  const [projectForm, setProjectForm] = useState({
-    project_name: '',
-    description: '',
-    owner_name: ''
-  })
 
   useEffect(() => {
     const checkAuth = async (): Promise<void> => {
@@ -69,46 +63,6 @@ export default function Dashboard() {
     if (guestProjects) {
       const parsedProjects = JSON.parse(guestProjects)
       setProjects(parsedProjects)
-    }
-  }
-
-  const createProject = async () => {
-    if (!projectForm.project_name || !projectForm.owner_name) {
-      alert('Please fill in required fields (Project Name and Owner)')
-      return
-    }
-
-    if (userType === 'guest') {
-      const newProject: Project = {
-        id: `guest-project-${Date.now()}`,
-        project_name: projectForm.project_name,
-        description: projectForm.description,
-        owner_name: projectForm.owner_name
-      }
-      const updatedProjects = [newProject, ...projects]
-      setProjects(updatedProjects)
-      sessionStorage.setItem('guest_projects', JSON.stringify(updatedProjects))
-      sessionStorage.setItem(`guest_members_${newProject.id}`, JSON.stringify([]))
-      sessionStorage.setItem(`guest_risks_${newProject.id}`, JSON.stringify([]))
-      setIsCreatingProject(false)
-      setProjectForm({ project_name: '', description: '', owner_name: '' })
-      router.push(`/dashboard/project/${newProject.id}`)
-      return
-    }
-
-    if (!userId) return
-
-    const { data, error } = await supabase
-      .from('projects')
-      .insert([{ ...projectForm, account_id: userId }])
-      .select()
-      .single()
-
-    if (!error && data) {
-      await loadAllProjects(userId)
-      setIsCreatingProject(false)
-      setProjectForm({ project_name: '', description: '', owner_name: '' })
-      router.push(`/dashboard/project/${data.id}`)
     }
   }
 
@@ -193,74 +147,12 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-semibold text-slate-800">My Projects</h2>
             <button
-              onClick={() => setIsCreatingProject(true)}
+              onClick={() => router.push('/dashboard/project/new')}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               + Create New Project
             </button>
           </div>
-
-          {/* Create Project Form */}
-          {isCreatingProject && (
-            <div className="mb-6 p-6 bg-slate-50 rounded-lg space-y-4">
-              <h3 className="text-lg font-semibold text-slate-800">Create New Project</h3>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Project Name *
-                </label>
-                <input
-                  type="text"
-                  value={projectForm.project_name}
-                  onChange={(e) => setProjectForm({ ...projectForm, project_name: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-500 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter project name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Project Description
-                </label>
-                <textarea
-                  value={projectForm.description}
-                  onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-500 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[100px]"
-                  placeholder="High-level description of the software project"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Project Owner *
-                </label>
-                <input
-                  type="text"
-                  value={projectForm.owner_name}
-                  onChange={(e) => setProjectForm({ ...projectForm, owner_name: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-500 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Owner's name"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={createProject}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Create Project
-                </button>
-                <button
-                  onClick={() => {
-                    setIsCreatingProject(false)
-                    setProjectForm({ project_name: '', description: '', owner_name: '' })
-                  }}
-                  className="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Projects List */}
           {projects.length === 0 ? (
