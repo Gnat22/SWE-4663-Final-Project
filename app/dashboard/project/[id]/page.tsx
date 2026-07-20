@@ -27,7 +27,15 @@ interface Risk {
   mitigation_plan: string
 }
 
+interface Requirement {
+  id: string
+  title: string
+  description: string
+  type: 'Functional' | 'Non-Functional'
+}
+
 type NewRiskInput = Omit<Risk, 'id'>
+type NewRequirementInput = Omit<Requirement, 'id'>
 
 export default function ProjectEditPage() {
   const router = useRouter()
@@ -49,6 +57,14 @@ export default function ProjectEditPage() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [newMember, setNewMember] = useState({ member_name: '', email: '' })
   const [showAddMember, setShowAddMember] = useState(false)
+
+  const [requirements, setRequirements] = useState<Requirement[]>([])
+  const [newRequirement, setNewRequirement] = useState<NewRequirementInput>({
+    title: '',
+    description: '',
+    type: 'Functional'
+  })
+  const [showAddRequirement, setShowAddRequirement] = useState(false)
 
   const [risks, setRisks] = useState<Risk[]>([])
   const [newRisk, setNewRisk] = useState<NewRiskInput>({
@@ -107,6 +123,14 @@ export default function ProjectEditPage() {
 
       if (membersData) setTeamMembers(membersData)
 
+      const { data: requirementsData } = await supabase
+        .from('project_requirements')
+        .select('*')
+        .eq('project_id', projectData.id)
+        .order('requirement_id', { ascending: true })
+
+      if (requirementsData) setRequirements(requirementsData)
+
       const { data: risksData } = await supabase
         .from('project_risks')
         .select('*')
@@ -135,9 +159,11 @@ export default function ProjectEditPage() {
         })
 
         const guestMembers = sessionStorage.getItem(`guest_members_${pid}`)
+        const guestRequirements = sessionStorage.getItem(`guest_requirements_${pid}`)
         const guestRisks = sessionStorage.getItem(`guest_risks_${pid}`)
 
         if (guestMembers) setTeamMembers(JSON.parse(guestMembers))
+        if (guestRequirements) setRequirements(JSON.parse(guestRequirements))
         if (guestRisks) setRisks(JSON.parse(guestRisks))
       } else {
         router.push('/dashboard')
@@ -147,7 +173,7 @@ export default function ProjectEditPage() {
     }
   }
 
-  const saveGuestData = (projectData: Project, membersData: TeamMember[], risksData: Risk[]) => {
+  const saveGuestData = (projectData: Project, membersData: TeamMember[], requirementsData: Requirement[], risksData: Risk[]) => {
     const guestProjects = sessionStorage.getItem('guest_projects')
     if (guestProjects) {
       const parsedProjects = JSON.parse(guestProjects)
@@ -157,6 +183,7 @@ export default function ProjectEditPage() {
       sessionStorage.setItem('guest_projects', JSON.stringify(updatedProjects))
     }
     sessionStorage.setItem(`guest_members_${projectData.id}`, JSON.stringify(membersData))
+    sessionStorage.setItem(`guest_requirements_${projectData.id}`, JSON.stringify(requirementsData))
     sessionStorage.setItem(`guest_risks_${projectData.id}`, JSON.stringify(risksData))
   }
 
@@ -168,7 +195,7 @@ export default function ProjectEditPage() {
           ...projectForm
         }
         setProject(updatedProject)
-        saveGuestData(updatedProject, teamMembers, risks)
+        saveGuestData(updatedProject, teamMembers, requirements, risks)
         setIsEditingProject(false)
       }
       return
@@ -198,7 +225,7 @@ export default function ProjectEditPage() {
       }
       const updatedMembers = [...teamMembers, guestMember]
       setTeamMembers(updatedMembers)
-      saveGuestData(project, updatedMembers, risks)
+      saveGuestData(project, updatedMembers, requirements, risks)
       setNewMember({ member_name: '', email: '' })
       setShowAddMember(false)
       return
@@ -222,7 +249,7 @@ export default function ProjectEditPage() {
       const updatedMembers = teamMembers.filter(m => m.id !== memberId)
       setTeamMembers(updatedMembers)
       if (project) {
-        saveGuestData(project, updatedMembers, risks)
+        saveGuestData(project, updatedMembers, requirements, risks)
       }
       return
     }
@@ -234,6 +261,57 @@ export default function ProjectEditPage() {
 
     if (!error) {
       setTeamMembers(teamMembers.filter(m => m.id !== memberId))
+    }
+  }
+
+  const addRequirement = async () => {
+    if (!project || !newRequirement.title) return
+
+    if (userType === 'guest') {
+      const guestRequirement: Requirement = {
+        id: `guest-requirement-${Date.now()}`,
+        title: newRequirement.title,
+        description: newRequirement.description,
+        type: newRequirement.type
+      }
+      const updatedRequirements = [...requirements, guestRequirement]
+      setRequirements(updatedRequirements)
+      saveGuestData(project, teamMembers, updatedRequirements, risks)
+      setNewRequirement({ title: '', description: '', type: 'Functional' })
+      setShowAddRequirement(false)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('project_requirements')
+      .insert([{ ...newRequirement, project_id: project.id }])
+      .select()
+      .single()
+
+    if (!error && data) {
+      setRequirements([...requirements, data])
+      setNewRequirement({ title: '', description: '', type: 'Functional' })
+      setShowAddRequirement(false)
+    }
+  }
+
+  const deleteRequirement = async (requirementId: string) => {
+    if (userType === 'guest') {
+      const updatedRequirements = requirements.filter(r => r.id !== requirementId)
+      setRequirements(updatedRequirements)
+      if (project) {
+        saveGuestData(project, teamMembers, updatedRequirements, risks)
+      }
+      return
+    }
+
+    const { error } = await supabase
+      .from('project_requirements')
+      .delete()
+      .eq('requirement_id', requirementId)
+
+    if (!error) {
+      setRequirements(requirements.filter(r => r.id !== requirementId))
     }
   }
 
@@ -250,7 +328,7 @@ export default function ProjectEditPage() {
       }
       const updatedRisks = [guestRisk, ...risks]
       setRisks(updatedRisks)
-      saveGuestData(project, teamMembers, updatedRisks)
+      saveGuestData(project, teamMembers, requirements, updatedRisks)
       setNewRisk({
         risk_description: '',
         status: 'Open',
@@ -284,7 +362,7 @@ export default function ProjectEditPage() {
       const updatedRisks = risks.map(r => r.id === riskId ? { ...r, status } : r)
       setRisks(updatedRisks)
       if (project) {
-        saveGuestData(project, teamMembers, updatedRisks)
+        saveGuestData(project, teamMembers, requirements, updatedRisks)
       }
       return
     }
@@ -304,7 +382,7 @@ export default function ProjectEditPage() {
       const updatedRisks = risks.filter(r => r.id !== riskId)
       setRisks(updatedRisks)
       if (project) {
-        saveGuestData(project, teamMembers, updatedRisks)
+        saveGuestData(project, teamMembers, requirements, updatedRisks)
       }
       return
     }
@@ -463,6 +541,96 @@ export default function ProjectEditPage() {
                   <h3 className="text-sm font-medium text-slate-500 mb-1">Owner</h3>
                   <p className="text-slate-800">{project.owner_name}</p>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Requirements Section */}
+          <div className="bg-white rounded-2xl shadow-lg p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-semibold text-slate-800">Project Requirements</h2>
+              <button
+                onClick={() => setShowAddRequirement(true)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                + Add Requirement
+              </button>
+            </div>
+
+            {showAddRequirement && (
+              <div className="mb-6 p-4 bg-slate-50 rounded-lg space-y-3">
+                <input
+                  type="text"
+                  value={newRequirement.title}
+                  onChange={(e) => setNewRequirement({ ...newRequirement, title: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-500 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Requirement title *"
+                />
+                <textarea
+                  value={newRequirement.description}
+                  onChange={(e) => setNewRequirement({ ...newRequirement, description: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-500 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px]"
+                  placeholder="Requirement description"
+                />
+                <select
+                  value={newRequirement.type}
+                  onChange={(e) => setNewRequirement({ ...newRequirement, type: e.target.value as Requirement['type'] })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="Functional">Functional</option>
+                  <option value="Non-Functional">Non-Functional</option>
+                </select>
+                <div className="flex gap-2">
+                  <button
+                    onClick={addRequirement}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  >
+                    Add
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAddRequirement(false)
+                      setNewRequirement({ title: '', description: '', type: 'Functional' })
+                    }}
+                    className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {requirements.length === 0 ? (
+              <p className="text-slate-500 text-center py-8">No requirements added yet</p>
+            ) : (
+              <div className="space-y-3">
+                {requirements.map((req) => (
+                  <div key={req.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            req.type === 'Functional'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-purple-100 text-purple-800'
+                          }`}>
+                            {req.type}
+                          </span>
+                        </div>
+                        <p className="font-medium text-slate-800 mb-1">{req.title}</p>
+                        {req.description && (
+                          <p className="text-sm text-slate-600">{req.description}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => deleteRequirement(req.id)}
+                        className="ml-4 px-3 py-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

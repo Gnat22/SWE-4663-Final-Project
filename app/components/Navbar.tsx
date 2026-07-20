@@ -30,21 +30,6 @@ export default function Navbar() {
               AppName
             </span>
           </div>
-
-          {/* Center Navigation */}
-          <div className="flex items-center gap-6">
-            <a
-              href="/dashboard"
-              className={`px-4 py-2 rounded-full font-medium transition duration-200 ${
-                pathname === '/dashboard'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Dashboard
-            </a>
-          </div>
-
           {/* Sign Out Button */}
           <button
             onClick={handleSignOut}
