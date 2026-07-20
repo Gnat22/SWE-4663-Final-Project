@@ -199,7 +199,7 @@ export default function NewProjectPage() {
       sessionStorage.setItem(`guest_effort_logs_${newProject.id}`, JSON.stringify([]))
 
       setHasUnsavedChanges(false)
-      router.push(`/dashboard/project/${newProject.id}`)
+      router.push(`/dashboard`)
       return
     }
 
