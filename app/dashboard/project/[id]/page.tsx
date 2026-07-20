@@ -34,8 +34,29 @@ interface Requirement {
   type: 'Functional' | 'Non-Functional'
 }
 
+interface EffortLog {
+  id: string
+  requirement_id: string
+  log_date: string
+  phase: 'Requirements Analysis' | 'Designing' | 'Coding' | 'Testing' | 'Project Management'
+  hours_expended: number
+}
+
+interface EffortSummary {
+  requirement_id: string
+  requirement_title: string
+  requirement_type: string
+  total_requirements_analysis_hours: number
+  total_designing_hours: number
+  total_coding_hours: number
+  total_testing_hours: number
+  total_project_management_hours: number
+  total_overall_hours: number
+}
+
 type NewRiskInput = Omit<Risk, 'id'>
 type NewRequirementInput = Omit<Requirement, 'id'>
+type NewEffortLogInput = Omit<EffortLog, 'id'>
 
 export default function ProjectEditPage() {
   const router = useRouter()
@@ -74,6 +95,18 @@ export default function ProjectEditPage() {
     mitigation_plan: ''
   })
   const [showAddRisk, setShowAddRisk] = useState(false)
+
+  const [effortLogs, setEffortLogs] = useState<EffortLog[]>([])
+  const [effortSummaries, setEffortSummaries] = useState<EffortSummary[]>([])
+  const [selectedRequirementForEffort, setSelectedRequirementForEffort] = useState<string | null>(null)
+  const [newEffortLog, setNewEffortLog] = useState<NewEffortLogInput>({
+    requirement_id: '',
+    log_date: new Date().toISOString().split('T')[0],
+    phase: 'Requirements Analysis',
+    hours_expended: 0
+  })
+  const [showAddEffort, setShowAddEffort] = useState(false)
+  const [showEffortSummary, setShowEffortSummary] = useState(false)
 
   useEffect(() => {
     const checkAuth = async (): Promise<void> => {
@@ -138,6 +171,21 @@ export default function ProjectEditPage() {
         .order('updated_at', { ascending: false })
 
       if (risksData) setRisks(risksData)
+
+      const { data: effortLogsData } = await supabase
+        .from('effort_logs')
+        .select('*')
+        .in('requirement_id', requirementsData?.map((r: Requirement) => r.id) || [])
+        .order('log_date', { ascending: false })
+
+      if (effortLogsData) setEffortLogs(effortLogsData)
+
+      const { data: effortSummaryData } = await supabase
+        .from('v_project_effort_summary')
+        .select('*')
+        .in('requirement_id', requirementsData?.map((r: Requirement) => r.id) || [])
+
+      if (effortSummaryData) setEffortSummaries(effortSummaryData)
     } else {
       router.push('/dashboard')
     }
@@ -161,10 +209,16 @@ export default function ProjectEditPage() {
         const guestMembers = sessionStorage.getItem(`guest_members_${pid}`)
         const guestRequirements = sessionStorage.getItem(`guest_requirements_${pid}`)
         const guestRisks = sessionStorage.getItem(`guest_risks_${pid}`)
+        const guestEffortLogs = sessionStorage.getItem(`guest_effort_logs_${pid}`)
 
         if (guestMembers) setTeamMembers(JSON.parse(guestMembers))
         if (guestRequirements) setRequirements(JSON.parse(guestRequirements))
         if (guestRisks) setRisks(JSON.parse(guestRisks))
+        if (guestEffortLogs) {
+          const logs = JSON.parse(guestEffortLogs)
+          setEffortLogs(logs)
+          calculateGuestEffortSummaries(logs, JSON.parse(guestRequirements || '[]'))
+        }
       } else {
         router.push('/dashboard')
       }
@@ -185,6 +239,25 @@ export default function ProjectEditPage() {
     sessionStorage.setItem(`guest_members_${projectData.id}`, JSON.stringify(membersData))
     sessionStorage.setItem(`guest_requirements_${projectData.id}`, JSON.stringify(requirementsData))
     sessionStorage.setItem(`guest_risks_${projectData.id}`, JSON.stringify(risksData))
+    sessionStorage.setItem(`guest_effort_logs_${projectData.id}`, JSON.stringify(effortLogs))
+  }
+
+  const calculateGuestEffortSummaries = (logs: EffortLog[], reqs: Requirement[]) => {
+    const summaries: EffortSummary[] = reqs.map(req => {
+      const reqLogs = logs.filter(log => log.requirement_id === req.id)
+      return {
+        requirement_id: req.id,
+        requirement_title: req.title,
+        requirement_type: req.type,
+        total_requirements_analysis_hours: reqLogs.filter(l => l.phase === 'Requirements Analysis').reduce((sum, l) => sum + l.hours_expended, 0),
+        total_designing_hours: reqLogs.filter(l => l.phase === 'Designing').reduce((sum, l) => sum + l.hours_expended, 0),
+        total_coding_hours: reqLogs.filter(l => l.phase === 'Coding').reduce((sum, l) => sum + l.hours_expended, 0),
+        total_testing_hours: reqLogs.filter(l => l.phase === 'Testing').reduce((sum, l) => sum + l.hours_expended, 0),
+        total_project_management_hours: reqLogs.filter(l => l.phase === 'Project Management').reduce((sum, l) => sum + l.hours_expended, 0),
+        total_overall_hours: reqLogs.reduce((sum, l) => sum + l.hours_expended, 0)
+      }
+    })
+    setEffortSummaries(summaries)
   }
 
   const saveProject = async () => {
@@ -394,6 +467,93 @@ export default function ProjectEditPage() {
 
     if (!error) {
       setRisks(risks.filter(r => r.id !== riskId))
+    }
+  }
+
+  const addEffortLog = async () => {
+    if (!project || !newEffortLog.requirement_id || newEffortLog.hours_expended <= 0) {
+      alert('Please select a requirement and enter valid hours')
+      return
+    }
+
+    if (userType === 'guest') {
+      const guestLog: EffortLog = {
+        id: `guest-effort-${Date.now()}`,
+        requirement_id: newEffortLog.requirement_id,
+        log_date: newEffortLog.log_date,
+        phase: newEffortLog.phase,
+        hours_expended: newEffortLog.hours_expended
+      }
+      const updatedLogs = [guestLog, ...effortLogs]
+      setEffortLogs(updatedLogs)
+      calculateGuestEffortSummaries(updatedLogs, requirements)
+      saveGuestData(project, teamMembers, requirements, risks)
+      setNewEffortLog({
+        requirement_id: '',
+        log_date: new Date().toISOString().split('T')[0],
+        phase: 'Requirements Analysis',
+        hours_expended: 0
+      })
+      setShowAddEffort(false)
+      setSelectedRequirementForEffort(null)
+      return
+    }
+
+    if (!userId) return
+
+    const { data, error } = await supabase
+      .from('effort_logs')
+      .insert([{ ...newEffortLog, account_id: userId }])
+      .select()
+      .single()
+
+    if (!error && data) {
+      setEffortLogs([data, ...effortLogs])
+
+      const { data: effortSummaryData } = await supabase
+        .from('v_project_effort_summary')
+        .select('*')
+        .in('requirement_id', requirements.map(r => r.id))
+
+      if (effortSummaryData) setEffortSummaries(effortSummaryData)
+
+      setNewEffortLog({
+        requirement_id: '',
+        log_date: new Date().toISOString().split('T')[0],
+        phase: 'Requirements Analysis',
+        hours_expended: 0
+      })
+      setShowAddEffort(false)
+      setSelectedRequirementForEffort(null)
+    }
+  }
+
+  const deleteEffortLog = async (logId: string) => {
+    if (userType === 'guest') {
+      const updatedLogs = effortLogs.filter(l => l.id !== logId)
+      setEffortLogs(updatedLogs)
+      calculateGuestEffortSummaries(updatedLogs, requirements)
+      if (project) {
+        saveGuestData(project, teamMembers, requirements, risks)
+      }
+      return
+    }
+
+    const { error } = await supabase
+      .from('effort_logs')
+      .delete()
+      .eq('log_id', logId)
+
+    if (!error) {
+      const updatedLogs = effortLogs.filter(l => l.id !== logId)
+      setEffortLogs(updatedLogs)
+
+      const { data: effortSummaryData } = await supabase
+        .from('v_project_effort_summary')
+        .select('*')
+        .in('requirement_id', requirements.map(r => r.id))
+
+      if (effortSummaryData) setEffortSummaries(effortSummaryData)
     }
   }
 
@@ -847,6 +1007,234 @@ export default function ProjectEditPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Effort Tracking Section */}
+          <div className="bg-white rounded-2xl shadow-lg p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-semibold text-slate-800">Effort Tracking</h2>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowEffortSummary(!showEffortSummary)}
+                  className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                >
+                  {showEffortSummary ? 'Hide Summary' : 'View Summary'}
+                </button>
+                <button
+                  onClick={() => setShowAddEffort(true)}
+                  className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                  disabled={requirements.length === 0}
+                >
+                  + Log Effort
+                </button>
+              </div>
+            </div>
+
+            {requirements.length === 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                <p className="text-amber-800 text-sm">
+                  You need to add at least one requirement before you can log effort.
+                </p>
+              </div>
+            )}
+
+            {showAddEffort && (
+              <div className="mb-6 p-6 bg-slate-50 rounded-lg space-y-4">
+                <h3 className="text-lg font-semibold text-slate-800">Log Effort Hours</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Requirement *
+                    </label>
+                    <select
+                      value={newEffortLog.requirement_id}
+                      onChange={(e) => {
+                        setNewEffortLog({ ...newEffortLog, requirement_id: e.target.value })
+                        setSelectedRequirementForEffort(e.target.value)
+                      }}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    >
+                      <option value="">Select a requirement</option>
+                      {requirements.map((req) => (
+                        <option key={req.id} value={req.id}>
+                          {req.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={newEffortLog.log_date}
+                      onChange={(e) => setNewEffortLog({ ...newEffortLog, log_date: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Phase *
+                    </label>
+                    <select
+                      value={newEffortLog.phase}
+                      onChange={(e) => setNewEffortLog({ ...newEffortLog, phase: e.target.value as EffortLog['phase'] })}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    >
+                      <option value="Requirements Analysis">Requirements Analysis</option>
+                      <option value="Designing">Designing</option>
+                      <option value="Coding">Coding</option>
+                      <option value="Testing">Testing</option>
+                      <option value="Project Management">Project Management</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Hours Expended *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={newEffortLog.hours_expended}
+                      onChange={(e) => setNewEffortLog({ ...newEffortLog, hours_expended: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-500 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                      placeholder="e.g., 8.5"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={addEffortLog}
+                    className="px-6 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                  >
+                    Log Effort
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAddEffort(false)
+                      setSelectedRequirementForEffort(null)
+                      setNewEffortLog({
+                        requirement_id: '',
+                        log_date: new Date().toISOString().split('T')[0],
+                        phase: 'Requirements Analysis',
+                        hours_expended: 0
+                      })
+                    }}
+                    className="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Effort Summary View */}
+            {showEffortSummary && (
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold text-slate-800 mb-4">Effort Summary by Requirement</h3>
+                {effortSummaries.length === 0 ? (
+                  <p className="text-slate-500 text-center py-8">No effort logged yet</p>
+                ) : (
+                  <div className="space-y-4">
+                    {effortSummaries.map((summary) => (
+                      <div key={summary.requirement_id} className="p-5 bg-slate-50 rounded-lg border-2 border-slate-200">
+                        <div className="mb-4">
+                          <h4 className="text-lg font-semibold text-slate-800">{summary.requirement_title}</h4>
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-2 ${
+                            summary.requirement_type === 'Functional'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-purple-100 text-purple-800'
+                          }`}>
+                            {summary.requirement_type}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          <div className="bg-white p-3 rounded-lg border border-slate-200">
+                            <p className="text-xs font-medium text-slate-600 mb-1">Requirements Analysis</p>
+                            <p className="text-2xl font-bold text-slate-800">{summary.total_requirements_analysis_hours.toFixed(1)}</p>
+                            <p className="text-xs text-slate-500">hours</p>
+                          </div>
+
+                          <div className="bg-white p-3 rounded-lg border border-slate-200">
+                            <p className="text-xs font-medium text-slate-600 mb-1">Designing</p>
+                            <p className="text-2xl font-bold text-slate-800">{summary.total_designing_hours.toFixed(1)}</p>
+                            <p className="text-xs text-slate-500">hours</p>
+                          </div>
+
+                          <div className="bg-white p-3 rounded-lg border border-slate-200">
+                            <p className="text-xs font-medium text-slate-600 mb-1">Coding</p>
+                            <p className="text-2xl font-bold text-slate-800">{summary.total_coding_hours.toFixed(1)}</p>
+                            <p className="text-xs text-slate-500">hours</p>
+                          </div>
+
+                          <div className="bg-white p-3 rounded-lg border border-slate-200">
+                            <p className="text-xs font-medium text-slate-600 mb-1">Testing</p>
+                            <p className="text-2xl font-bold text-slate-800">{summary.total_testing_hours.toFixed(1)}</p>
+                            <p className="text-xs text-slate-500">hours</p>
+                          </div>
+
+                          <div className="bg-white p-3 rounded-lg border border-slate-200">
+                            <p className="text-xs font-medium text-slate-600 mb-1">Project Management</p>
+                            <p className="text-2xl font-bold text-slate-800">{summary.total_project_management_hours.toFixed(1)}</p>
+                            <p className="text-xs text-slate-500">hours</p>
+                          </div>
+
+                          <div className="bg-cyan-100 p-3 rounded-lg border-2 border-cyan-300">
+                            <p className="text-xs font-medium text-cyan-900 mb-1">Total Hours</p>
+                            <p className="text-2xl font-bold text-cyan-900">{summary.total_overall_hours.toFixed(1)}</p>
+                            <p className="text-xs text-cyan-700">hours</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Recent Effort Logs */}
+            <div>
+              <h3 className="text-xl font-semibold text-slate-800 mb-4">Recent Effort Logs</h3>
+              {effortLogs.length === 0 ? (
+                <p className="text-slate-500 text-center py-8">No effort logs recorded yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {effortLogs.slice(0, 10).map((log) => {
+                    const requirement = requirements.find(r => r.id === log.requirement_id)
+                    return (
+                      <div key={log.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="font-medium text-slate-800">{requirement?.title || 'Unknown Requirement'}</span>
+                            <span className="px-3 py-1 bg-cyan-100 text-cyan-800 text-xs font-medium rounded-full">
+                              {log.phase}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-slate-600">
+                            <span>Date: {new Date(log.log_date).toLocaleDateString()}</span>
+                            <span className="font-semibold text-slate-800">{log.hours_expended} hours</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => deleteEffortLog(log.id)}
+                          className="px-3 py-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
