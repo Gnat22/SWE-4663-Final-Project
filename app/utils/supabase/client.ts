@@ -12,12 +12,18 @@ export const createClient = (): SupabaseClient => {
   return createBrowserClient(url, anonKey, {
     cookies: {
       getAll() {
+        if (typeof document === 'undefined') {
+          return []
+        }
         return document.cookie.split('; ').map(cookie => {
           const [name, ...value] = cookie.split('=')
           return { name, value: value.join('=') }
         })
       },
       setAll(cookiesToSet) {
+        if (typeof document === 'undefined') {
+          return
+        }
         cookiesToSet.forEach(({ name, value, options }) => {
           document.cookie = `${name}=${value}; path=${options?.path ?? '/'}; max-age=${options?.maxAge ?? 31536000}; ${options?.sameSite ? `SameSite=${options.sameSite}` : 'SameSite=Lax'}`
         })

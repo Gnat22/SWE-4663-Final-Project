@@ -15,20 +15,20 @@ interface Project {
 
 export default function Dashboard() {
   const router = useRouter()
-  const supabase = createClient()
   const [userType, setUserType] = useState<UserType>(null)
   const [userId, setUserId] = useState<string | null>(null)
 
   const [projects, setProjects] = useState<Project[]>([])
 
   useEffect(() => {
+    const supabase = createClient()
     const checkAuth = async (): Promise<void> => {
       const { data: { session } } = await supabase.auth.getSession()
 
       if (session) {
         setUserType('user')
         setUserId(session.user.id)
-        await loadAllProjects(session.user.id)
+        await loadAllProjects(session.user.id, supabase)
         return
       }
 
@@ -43,10 +43,10 @@ export default function Dashboard() {
     }
 
     checkAuth()
-  }, [router, supabase])
+  }, [router])
 
-  const loadAllProjects = async (uid: string) => {
-    const { data: projectsData } = await supabase
+  const loadAllProjects = async (uid: string, supabaseClient = createClient()) => {
+    const { data: projectsData } = await supabaseClient
       .from('projects')
       .select('*, id:project_id')
       .eq('account_id', uid)
@@ -80,6 +80,7 @@ export default function Dashboard() {
       return
     }
 
+    const supabase = createClient()
     const { error } = await supabase
       .from('projects')
       .delete()
@@ -91,6 +92,7 @@ export default function Dashboard() {
   }
 
   const handleLogOut = async (): Promise<void> => {
+    const supabase = createClient()
     await supabase.auth.signOut()
     localStorage.removeItem('is_guest')
     sessionStorage.clear()

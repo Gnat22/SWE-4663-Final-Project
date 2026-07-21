@@ -26,7 +26,7 @@ export default function Navbar() {
           {/* App Name */}
           <div className="flex items-center">
             <span className="text-xl font-semibold text-slate-800">
-              AppName
+              SWE 4663 Final Project
             </span>
           </div>
           {/* Sign Out Button */}

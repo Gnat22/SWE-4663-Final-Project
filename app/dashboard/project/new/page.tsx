@@ -32,7 +32,6 @@ type NewRequirementInput = Omit<Requirement, 'id'>
 
 export default function NewProjectPage() {
   const router = useRouter()
-  const supabase = createClient()
 
   const [userType, setUserType] = useState<UserType>(null)
   const [userId, setUserId] = useState<string | null>(null)
@@ -75,6 +74,7 @@ export default function NewProjectPage() {
   })
 
   useEffect(() => {
+    const supabase = createClient()
     const checkAuth = async (): Promise<void> => {
       const { data: { session } } = await supabase.auth.getSession()
 
@@ -94,7 +94,7 @@ export default function NewProjectPage() {
     }
 
     checkAuth()
-  }, [router, supabase])
+  }, [router])
 
   useEffect(() => {
     const formHasContent = projectForm.project_name.trim() !== '' ||
@@ -208,6 +208,7 @@ export default function NewProjectPage() {
       return
     }
 
+    const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
     console.log('Session before insert:', session)
     console.log('User ID:', userId)

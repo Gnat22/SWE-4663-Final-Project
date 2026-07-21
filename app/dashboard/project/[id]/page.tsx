@@ -62,7 +62,6 @@ export default function ProjectEditPage() {
   const router = useRouter()
   const params = useParams()
   const projectId = params.id as string
-  const supabase = createClient()
 
   const [userType, setUserType] = useState<UserType>(null)
   const [userId, setUserId] = useState<string | null>(null)
@@ -109,13 +108,14 @@ export default function ProjectEditPage() {
   const [showEffortSummary, setShowEffortSummary] = useState(false)
 
   useEffect(() => {
+    const supabase = createClient()
     const checkAuth = async (): Promise<void> => {
       const { data: { session } } = await supabase.auth.getSession()
 
       if (session) {
         setUserType('user')
         setUserId(session.user.id)
-        await loadProjectData(session.user.id, projectId)
+        await loadProjectData(session.user.id, projectId, supabase)
         return
       }
 
@@ -130,10 +130,10 @@ export default function ProjectEditPage() {
     }
 
     checkAuth()
-  }, [router, supabase, projectId])
+  }, [router, projectId])
 
-  const loadProjectData = async (uid: string, pid: string) => {
-    const { data: projectData } = await supabase
+  const loadProjectData = async (uid: string, pid: string, supabaseClient = createClient()) => {
+    const { data: projectData } = await supabaseClient
       .from('projects')
       .select('*, id:project_id')
       .eq('project_id', pid)
@@ -148,7 +148,7 @@ export default function ProjectEditPage() {
         owner_name: projectData.owner_name
       })
 
-      const { data: membersData } = await supabase
+      const { data: membersData } = await supabaseClient
         .from('project_members')
         .select('*, id:member_id')
         .eq('project_id', projectData.id)
@@ -156,7 +156,7 @@ export default function ProjectEditPage() {
 
       if (membersData) setTeamMembers(membersData)
 
-      const { data: requirementsData } = await supabase
+      const { data: requirementsData } = await supabaseClient
         .from('project_requirements')
         .select('*, id:requirement_id')
         .eq('project_id', projectData.id)
@@ -164,7 +164,7 @@ export default function ProjectEditPage() {
 
       if (requirementsData) setRequirements(requirementsData)
 
-      const { data: risksData } = await supabase
+      const { data: risksData } = await supabaseClient
         .from('project_risks')
         .select('*, id:risk_id')
         .eq('project_id', projectData.id)
@@ -172,7 +172,7 @@ export default function ProjectEditPage() {
 
       if (risksData) setRisks(risksData)
 
-      const { data: effortLogsData } = await supabase
+      const { data: effortLogsData } = await supabaseClient
         .from('effort_logs')
         .select('*, id:log_id')
         .in('requirement_id', requirementsData?.map((r: Requirement) => r.id) || [])
@@ -180,9 +180,10 @@ export default function ProjectEditPage() {
 
       if (effortLogsData) setEffortLogs(effortLogsData)
 
-      const { data: effortSummaryData } = await supabase
+      const { data: effortSummaryData } = await supabaseClient
         .from('v_project_effort_summary')
         .select('*')
+        .eq('account_id', uid)
         .in('requirement_id', requirementsData?.map((r: Requirement) => r.id) || [])
 
       if (effortSummaryData) setEffortSummaries(effortSummaryData)
@@ -276,6 +277,7 @@ export default function ProjectEditPage() {
 
     if (!userId || !project) return
 
+    const supabase = createClient()
     const { error } = await supabase
       .from('projects')
       .update(projectForm)
@@ -304,6 +306,7 @@ export default function ProjectEditPage() {
       return
     }
 
+    const supabase = createClient()
     const { data, error } = await supabase
       .from('project_members')
       .insert([{ ...newMember, project_id: project.id }])
@@ -327,6 +330,7 @@ export default function ProjectEditPage() {
       return
     }
 
+    const supabase = createClient()
     const { error } = await supabase
       .from('project_members')
       .delete()
@@ -355,6 +359,7 @@ export default function ProjectEditPage() {
       return
     }
 
+    const supabase = createClient()
     const { data, error } = await supabase
       .from('project_requirements')
       .insert([{ ...newRequirement, project_id: project.id }])
@@ -378,6 +383,7 @@ export default function ProjectEditPage() {
       return
     }
 
+    const supabase = createClient()
     const { error } = await supabase
       .from('project_requirements')
       .delete()
@@ -412,6 +418,7 @@ export default function ProjectEditPage() {
       return
     }
 
+    const supabase = createClient()
     const { data, error } = await supabase
       .from('project_risks')
       .insert([{ ...newRisk, project_id: project.id }])
@@ -440,6 +447,7 @@ export default function ProjectEditPage() {
       return
     }
 
+    const supabase = createClient()
     const { error } = await supabase
       .from('project_risks')
       .update({ status })
@@ -460,6 +468,7 @@ export default function ProjectEditPage() {
       return
     }
 
+    const supabase = createClient()
     const { error } = await supabase
       .from('project_risks')
       .delete()
@@ -501,6 +510,7 @@ export default function ProjectEditPage() {
 
     if (!userId) return
 
+    const supabase = createClient()
     const { data, error } = await supabase
       .from('effort_logs')
       .insert([{ ...newEffortLog, account_id: userId }])
@@ -510,9 +520,11 @@ export default function ProjectEditPage() {
     if (!error && data) {
       setEffortLogs([data, ...effortLogs])
 
+      const supabase = createClient()
       const { data: effortSummaryData } = await supabase
         .from('v_project_effort_summary')
         .select('*')
+        .eq('account_id', userId!)
         .in('requirement_id', requirements.map(r => r.id))
 
       if (effortSummaryData) setEffortSummaries(effortSummaryData)
@@ -539,6 +551,7 @@ export default function ProjectEditPage() {
       return
     }
 
+    const supabase = createClient()
     const { error } = await supabase
       .from('effort_logs')
       .delete()
@@ -548,9 +561,11 @@ export default function ProjectEditPage() {
       const updatedLogs = effortLogs.filter(l => l.id !== logId)
       setEffortLogs(updatedLogs)
 
+      const supabase = createClient()
       const { data: effortSummaryData } = await supabase
         .from('v_project_effort_summary')
         .select('*')
+        .eq('account_id', userId!)
         .in('requirement_id', requirements.map(r => r.id))
 
       if (effortSummaryData) setEffortSummaries(effortSummaryData)

@@ -6,10 +6,10 @@ import { createClient } from './utils/supabase/client'
 
 export default function Home() {
   const router = useRouter()
-  const supabase = createClient()
   const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
+    const supabase = createClient()
     const checkExistingSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
@@ -28,7 +28,7 @@ export default function Home() {
       }
     }
     checkExistingSession()
-  }, [router, supabase])
+  }, [router])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
