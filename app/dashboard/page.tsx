@@ -48,7 +48,7 @@ export default function Dashboard() {
   const loadAllProjects = async (uid: string) => {
     const { data: projectsData } = await supabase
       .from('projects')
-      .select('*')
+      .select('*, id:project_id')
       .eq('account_id', uid)
       .order('created_at', { ascending: false })
 
