@@ -1,4 +1,4 @@
--- Enable Row Level Security on all tables
+
 ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
@@ -6,40 +6,30 @@ ALTER TABLE project_risks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_requirements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE effort_logs ENABLE ROW LEVEL SECURITY;
 
--- ACCOUNTS POLICIES
--- Users can read their own account
 CREATE POLICY "Users can view their own account"
     ON accounts FOR SELECT
     USING (auth.uid() = account_id);
 
--- Users can update their own account
 CREATE POLICY "Users can update their own account"
     ON accounts FOR UPDATE
     USING (auth.uid() = account_id);
 
--- PROJECTS POLICIES
--- Users can view their own projects
 CREATE POLICY "Users can view their own projects"
     ON projects FOR SELECT
     USING (auth.uid() = account_id);
 
--- Users can insert their own projects
 CREATE POLICY "Users can insert their own projects"
     ON projects FOR INSERT
     WITH CHECK (auth.uid() = account_id);
 
--- Users can update their own projects
 CREATE POLICY "Users can update their own projects"
     ON projects FOR UPDATE
     USING (auth.uid() = account_id);
 
--- Users can delete their own projects
 CREATE POLICY "Users can delete their own projects"
     ON projects FOR DELETE
     USING (auth.uid() = account_id);
 
--- PROJECT MEMBERS POLICIES
--- Users can view members of their projects
 CREATE POLICY "Users can view members of their projects"
     ON project_members FOR SELECT
     USING (
@@ -50,7 +40,6 @@ CREATE POLICY "Users can view members of their projects"
         )
     );
 
--- Users can insert members into their projects
 CREATE POLICY "Users can insert members into their projects"
     ON project_members FOR INSERT
     WITH CHECK (
@@ -61,7 +50,6 @@ CREATE POLICY "Users can insert members into their projects"
         )
     );
 
--- Users can update members in their projects
 CREATE POLICY "Users can update members in their projects"
     ON project_members FOR UPDATE
     USING (
@@ -72,7 +60,6 @@ CREATE POLICY "Users can update members in their projects"
         )
     );
 
--- Users can delete members from their projects
 CREATE POLICY "Users can delete members from their projects"
     ON project_members FOR DELETE
     USING (
@@ -83,8 +70,6 @@ CREATE POLICY "Users can delete members from their projects"
         )
     );
 
--- PROJECT REQUIREMENTS POLICIES
--- Users can view requirements of their projects
 CREATE POLICY "Users can view requirements of their projects"
     ON project_requirements FOR SELECT
     USING (
@@ -95,7 +80,6 @@ CREATE POLICY "Users can view requirements of their projects"
         )
     );
 
--- Users can insert requirements into their projects
 CREATE POLICY "Users can insert requirements into their projects"
     ON project_requirements FOR INSERT
     WITH CHECK (
@@ -106,7 +90,6 @@ CREATE POLICY "Users can insert requirements into their projects"
         )
     );
 
--- Users can update requirements in their projects
 CREATE POLICY "Users can update requirements in their projects"
     ON project_requirements FOR UPDATE
     USING (
@@ -117,7 +100,6 @@ CREATE POLICY "Users can update requirements in their projects"
         )
     );
 
--- Users can delete requirements from their projects
 CREATE POLICY "Users can delete requirements from their projects"
     ON project_requirements FOR DELETE
     USING (
@@ -128,8 +110,6 @@ CREATE POLICY "Users can delete requirements from their projects"
         )
     );
 
--- PROJECT RISKS POLICIES
--- Users can view risks of their projects
 CREATE POLICY "Users can view risks of their projects"
     ON project_risks FOR SELECT
     USING (
@@ -140,7 +120,6 @@ CREATE POLICY "Users can view risks of their projects"
         )
     );
 
--- Users can insert risks into their projects
 CREATE POLICY "Users can insert risks into their projects"
     ON project_risks FOR INSERT
     WITH CHECK (
@@ -151,7 +130,6 @@ CREATE POLICY "Users can insert risks into their projects"
         )
     );
 
--- Users can update risks in their projects
 CREATE POLICY "Users can update risks in their projects"
     ON project_risks FOR UPDATE
     USING (
@@ -162,7 +140,6 @@ CREATE POLICY "Users can update risks in their projects"
         )
     );
 
--- Users can delete risks from their projects
 CREATE POLICY "Users can delete risks from their projects"
     ON project_risks FOR DELETE
     USING (
@@ -173,8 +150,6 @@ CREATE POLICY "Users can delete risks from their projects"
         )
     );
 
--- EFFORT LOGS POLICIES
--- Users can view effort logs for their project requirements
 CREATE POLICY "Users can view effort logs for their requirements"
     ON effort_logs FOR SELECT
     USING (
@@ -186,7 +161,6 @@ CREATE POLICY "Users can view effort logs for their requirements"
         )
     );
 
--- Users can insert effort logs for their project requirements
 CREATE POLICY "Users can insert effort logs for their requirements"
     ON effort_logs FOR INSERT
     WITH CHECK (
@@ -198,7 +172,6 @@ CREATE POLICY "Users can insert effort logs for their requirements"
         )
     );
 
--- Users can update their own effort logs
 CREATE POLICY "Users can update their own effort logs"
     ON effort_logs FOR UPDATE
     USING (
@@ -211,7 +184,6 @@ CREATE POLICY "Users can update their own effort logs"
         )
     );
 
--- Users can delete their own effort logs
 CREATE POLICY "Users can delete their own effort logs"
     ON effort_logs FOR DELETE
     USING (
