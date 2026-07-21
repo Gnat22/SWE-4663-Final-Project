@@ -1,11 +1,10 @@
--- 1. ACCOUNTS (extends Supabase Auth)
+
 CREATE TABLE accounts (
     account_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     role VARCHAR(50) NOT NULL DEFAULT 'user',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Trigger to automatically create account record when auth user is created
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -19,7 +18,6 @@ CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- 2. PROJECTS
 CREATE TABLE projects (
     project_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     account_id UUID NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
@@ -29,7 +27,6 @@ CREATE TABLE projects (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. PROJECT TEAM MEMBERS
 CREATE TABLE project_members (
     member_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     project_id BIGINT NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
@@ -38,7 +35,6 @@ CREATE TABLE project_members (
     joined_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. PROJECT RISKS
 CREATE TABLE project_risks (
     risk_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     project_id BIGINT NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
@@ -49,7 +45,6 @@ CREATE TABLE project_risks (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. PROJECT REQUIREMENTS
 CREATE TABLE project_requirements (
     requirement_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     project_id BIGINT NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
@@ -58,7 +53,6 @@ CREATE TABLE project_requirements (
     type VARCHAR(50) NOT NULL CHECK (type IN ('Functional', 'Non-Functional'))
 );
 
--- 6. EFFORT TRACKING
 CREATE TABLE effort_logs (
     log_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     requirement_id BIGINT NOT NULL REFERENCES project_requirements(requirement_id) ON DELETE CASCADE,
@@ -68,7 +62,6 @@ CREATE TABLE effort_logs (
     hours_expended NUMERIC(5,2) NOT NULL CHECK (hours_expended >= 0)
 );
 
--- 7. EFFORT SUMMARY VIEW
 CREATE OR REPLACE VIEW v_project_effort_summary AS
 SELECT 
     p.project_name,
