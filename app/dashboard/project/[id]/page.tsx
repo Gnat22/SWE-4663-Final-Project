@@ -135,7 +135,7 @@ export default function ProjectEditPage() {
   const loadProjectData = async (uid: string, pid: string) => {
     const { data: projectData } = await supabase
       .from('projects')
-      .select('*')
+      .select('*, id:project_id')
       .eq('project_id', pid)
       .eq('account_id', uid)
       .single()
@@ -150,7 +150,7 @@ export default function ProjectEditPage() {
 
       const { data: membersData } = await supabase
         .from('project_members')
-        .select('*')
+        .select('*, id:member_id')
         .eq('project_id', projectData.id)
         .order('joined_at', { ascending: true })
 
@@ -158,7 +158,7 @@ export default function ProjectEditPage() {
 
       const { data: requirementsData } = await supabase
         .from('project_requirements')
-        .select('*')
+        .select('*, id:requirement_id')
         .eq('project_id', projectData.id)
         .order('requirement_id', { ascending: true })
 
@@ -166,7 +166,7 @@ export default function ProjectEditPage() {
 
       const { data: risksData } = await supabase
         .from('project_risks')
-        .select('*')
+        .select('*, id:risk_id')
         .eq('project_id', projectData.id)
         .order('updated_at', { ascending: false })
 
@@ -174,7 +174,7 @@ export default function ProjectEditPage() {
 
       const { data: effortLogsData } = await supabase
         .from('effort_logs')
-        .select('*')
+        .select('*, id:log_id')
         .in('requirement_id', requirementsData?.map((r: Requirement) => r.id) || [])
         .order('log_date', { ascending: false })
 
@@ -307,7 +307,7 @@ export default function ProjectEditPage() {
     const { data, error } = await supabase
       .from('project_members')
       .insert([{ ...newMember, project_id: project.id }])
-      .select()
+      .select('*, id:member_id')
       .single()
 
     if (!error && data) {
@@ -358,7 +358,7 @@ export default function ProjectEditPage() {
     const { data, error } = await supabase
       .from('project_requirements')
       .insert([{ ...newRequirement, project_id: project.id }])
-      .select()
+      .select('*, id:requirement_id')
       .single()
 
     if (!error && data) {
@@ -415,7 +415,7 @@ export default function ProjectEditPage() {
     const { data, error } = await supabase
       .from('project_risks')
       .insert([{ ...newRisk, project_id: project.id }])
-      .select()
+      .select('*, id:risk_id')
       .single()
 
     if (!error && data) {
@@ -504,7 +504,7 @@ export default function ProjectEditPage() {
     const { data, error } = await supabase
       .from('effort_logs')
       .insert([{ ...newEffortLog, account_id: userId }])
-      .select()
+      .select('*, id:log_id')
       .single()
 
     if (!error && data) {
