@@ -1,30 +1,52 @@
 "use client"
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from './utils/supabase/client'
 
 export default function Home() {
   const router = useRouter()
   const supabase = createClient()
+  const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
     const checkExistingSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      const isGuest = localStorage.getItem('is_guest')
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const isGuest = localStorage.getItem('is_guest')
 
-      if (session || isGuest === 'true') {
-        router.push('/dashboard')
-      } else {
-        router.push('/login')
+        if (session || isGuest === 'true') {
+          router.replace('/dashboard')
+        } else {
+          router.replace('/login')
+        }
+      } catch (error) {
+        console.error('Error checking session:', error)
+        router.replace('/login')
+      } finally {
+        setIsChecking(false)
       }
     }
     checkExistingSession()
   }, [router, supabase])
 
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isChecking) {
+        console.warn('Session check timeout, redirecting to login')
+        router.replace('/login')
+      }
+    }, 3000)
+
+    return () => clearTimeout(timeout)
+  }, [isChecking, router])
+
   return (
-    <div style={{ padding: '20px', textAlign: 'center' }}>
-      <p>Checking authentication...</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-slate-600">Checking authentication...</p>
+      </div>
     </div>
   )
 }

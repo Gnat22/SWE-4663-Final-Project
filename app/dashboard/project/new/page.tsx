@@ -203,7 +203,15 @@ export default function NewProjectPage() {
       return
     }
 
-    if (!userId) return
+    if (!userId) {
+      alert('User ID not found. Please log in again.')
+      return
+    }
+
+    const { data: { session } } = await supabase.auth.getSession()
+    console.log('Session before insert:', session)
+    console.log('User ID:', userId)
+    console.log('Session user ID:', session?.user?.id)
 
     const { data: projectData, error: projectError } = await supabase
       .from('projects')
@@ -211,7 +219,13 @@ export default function NewProjectPage() {
       .select()
       .single()
 
-    if (projectError || !projectData) {
+    if (projectError) {
+      console.error('Project creation error:', projectError)
+      alert(`Error creating project: ${projectError.message}`)
+      return
+    }
+
+    if (!projectData) {
       alert('Error creating project. Please try again.')
       return
     }
