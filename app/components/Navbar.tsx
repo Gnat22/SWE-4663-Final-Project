@@ -20,10 +20,18 @@ export default function Navbar() {
     checkUserStatus()
   }, [supabase])
 
-  const showNavbarPaths = ['/dashboard', '/settings']
-  const shouldShowNavbar = showNavbarPaths.some(path => pathname?.startsWith(path))
+  // Only show navbar on specific valid routes
+  const validRoutes = [
+    '/dashboard',
+    '/dashboard/project/new',
+    '/settings'
+  ]
 
-  if (!shouldShowNavbar) {
+  // Also allow dynamic project routes like /dashboard/project/[id]
+  const isDynamicProjectRoute = pathname?.match(/^\/dashboard\/project\/[^/]+$/)
+  const isValidRoute = validRoutes.includes(pathname) || isDynamicProjectRoute
+
+  if (!isValidRoute) {
     return null
   }
 
