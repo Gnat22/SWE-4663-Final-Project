@@ -89,12 +89,10 @@ export default function NewProjectPage() {
         setUserType('guest')
         return
       }
-
-      router.push('/login')
     }
 
     checkAuth()
-  }, [router])
+  }, [])
 
   useEffect(() => {
     const formHasContent = projectForm.project_name.trim() !== '' ||

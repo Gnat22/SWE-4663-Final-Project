@@ -38,12 +38,10 @@ export default function Dashboard() {
         loadGuestData()
         return
       }
-
-      router.push('/login')
     }
 
     checkAuth()
-  }, [router])
+  }, [])
 
   const loadAllProjects = async (uid: string, supabaseClient = createClient()) => {
     const { data: projectsData } = await supabaseClient

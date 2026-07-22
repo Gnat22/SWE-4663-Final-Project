@@ -2,13 +2,28 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '../utils/supabase/client'
+import { useEffect, useState } from 'react'
 
 export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const [isGuest, setIsGuest] = useState<boolean | null>(null)
 
-  if (pathname === '/login' || pathname === '/signup' || pathname == '/') {
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const guestStatus = localStorage.getItem('is_guest') === 'true'
+
+      setIsGuest(!session && guestStatus)
+    }
+    checkUserStatus()
+  }, [supabase])
+
+  const showNavbarPaths = ['/dashboard', '/settings']
+  const shouldShowNavbar = showNavbarPaths.some(path => pathname?.startsWith(path))
+
+  if (!shouldShowNavbar) {
     return null
   }
 
@@ -29,14 +44,25 @@ export default function Navbar() {
               SWE 4663 Final Project
             </span>
           </div>
-          {/* Sign Out Button */}
-          <button
-            onClick={handleSignOut}
-            type="button"
-            className="px-6 py-2 bg-slate-600 text-white font-medium rounded-full hover:bg-slate-700 transition duration-200 shadow-sm hover:shadow-md"
-          >
-            Sign Out
-          </button>
+          {/* Settings & Sign Out Buttons */}
+          <div className="flex items-center gap-3">
+            {isGuest === false && (
+              <button
+                onClick={() => router.push('/settings')}
+                type="button"
+                className="px-6 py-2 bg-blue-600 text-white font-medium rounded-full hover:bg-blue-700 transition duration-200 shadow-sm hover:shadow-md"
+              >
+                Settings
+              </button>
+            )}
+            <button
+              onClick={handleSignOut}
+              type="button"
+              className="px-6 py-2 bg-slate-600 text-white font-medium rounded-full hover:bg-slate-700 transition duration-200 shadow-sm hover:shadow-md"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
     </nav>

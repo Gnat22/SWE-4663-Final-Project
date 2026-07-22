@@ -35,11 +35,17 @@ export async function updateSession(request: NextRequest) {
   const isGuest = request.cookies.get('is_guest')?.value === 'true'
 
   const isDashboardRoute = request.nextUrl.pathname.startsWith('/dashboard')
+  const isSettingsRoute = request.nextUrl.pathname.startsWith('/settings')
   const isRootRoute = request.nextUrl.pathname === '/'
 
   if (isDashboardRoute && !user && !isGuest) {
     const loginUrl = new URL('/', request.url)
     return NextResponse.redirect(loginUrl)
+  }
+
+  if (isSettingsRoute && !user) {
+    const dashboardUrl = new URL('/dashboard', request.url)
+    return NextResponse.redirect(dashboardUrl)
   }
 
   if (isRootRoute && (user || isGuest)) {

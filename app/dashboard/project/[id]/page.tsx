@@ -125,12 +125,10 @@ export default function ProjectEditPage() {
         loadGuestData(projectId)
         return
       }
-
-      router.push('/login')
     }
 
     checkAuth()
-  }, [router, projectId])
+  }, [projectId])
 
   const loadProjectData = async (uid: string, pid: string, supabaseClient = createClient()) => {
     const { data: projectData } = await supabaseClient
