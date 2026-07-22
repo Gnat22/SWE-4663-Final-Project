@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '../utils/supabase/client'
 
 export default function SessionProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+  const pathname = usePathname()
   const supabase = createClient()
 
   useEffect(() => {
@@ -25,10 +26,23 @@ export default function SessionProvider({ children }: { children: React.ReactNod
       }
     })
 
+    const checkRootRedirect = async () => {
+      if (pathname === '/') {
+        const { data: { session } } = await supabase.auth.getSession()
+        const isGuest = localStorage.getItem('is_guest') === 'true'
+
+        if (!session && !isGuest) {
+          router.push('/login')
+        }
+      }
+    }
+
+    checkRootRedirect()
+
     return () => {
       subscription.unsubscribe()
     }
-  }, [supabase, router])
+  }, [supabase, router, pathname])
 
   return <>{children}</>
 }
