@@ -11,6 +11,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<boolean>(false)
+  const [needsConfirmation, setNeedsConfirmation] = useState<boolean>(false)
 
   const handleSignUp = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault()
@@ -18,7 +19,7 @@ export default function SignUpPage() {
     setSuccess(false)
 
     const supabase = createClient()
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -30,9 +31,13 @@ export default function SignUpPage() {
       setError(signUpError.message)
     } else {
       setSuccess(true)
-      setTimeout(() => {
-        router.push('/login')
-      }, 3000)
+
+      if (!data.session) {
+        setNeedsConfirmation(true)
+        setTimeout(() => {
+          router.push('/login')
+        }, 3000)
+      }
     }
   }
 
@@ -47,7 +52,9 @@ export default function SignUpPage() {
 
           {success ? (
             <div className="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-full text-center">
-              Account created successfully! Redirecting to login...
+              {needsConfirmation
+                ? 'Account created! Please check your email to confirm your account, then sign in.'
+                : 'Account created successfully! Redirecting to dashboard...'}
             </div>
           ) : (
             <form onSubmit={handleSignUp} className="space-y-5">
