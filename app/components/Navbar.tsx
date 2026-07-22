@@ -20,7 +20,10 @@ export default function Navbar() {
     checkUserStatus()
   }, [supabase])
 
-  if (pathname === '/login' || pathname === '/signup' || pathname == '/') {
+  const showNavbarPaths = ['/dashboard', '/settings']
+  const shouldShowNavbar = showNavbarPaths.some(path => pathname?.startsWith(path))
+
+  if (!shouldShowNavbar) {
     return null
   }
 
