@@ -43,15 +43,29 @@ export default function SettingsPage() {
       return
     }
 
-    const { error: updateError } = await supabase.auth.updateUser({
-      email: newEmail
-    })
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
 
-    if (updateError) {
-      setEmailError(updateError.message)
-    } else {
-      setEmailSuccess('Email update initiated! Please check both your old and new email addresses for confirmation links.')
-      setNewEmail('')
+      if (!session) {
+        setEmailError('You must be logged in to change your email')
+        return
+      }
+
+      const { data, error: updateError } = await supabase.auth.updateUser(
+        { email: newEmail },
+        {
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
+      )
+
+      if (updateError) {
+        setEmailError(updateError.message)
+      } else {
+        setEmailSuccess('Email update initiated! Please check both your old and new email addresses for confirmation links.')
+        setNewEmail('')
+      }
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : 'An unexpected error occurred')
     }
   }
 
@@ -254,7 +268,7 @@ export default function SettingsPage() {
             ) : (
               <div className="space-y-4">
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <p className="text-red-800 font-medium mb-2">⚠️ This action cannot be undone!</p>
+                  <p className="text-red-800 font-medium mb-2">This action cannot be undone!</p>
                   <p className="text-red-700 text-sm mb-4">
                     Type <span className="font-bold">DELETE</span> to confirm account deletion:
                   </p>
