@@ -3,19 +3,23 @@ CREATE OR REPLACE FUNCTION public.handle_email_change()
 RETURNS TRIGGER AS $$
 DECLARE
     old_account_exists BOOLEAN;
+    orphaned_account_id UUID;
 BEGIN
     SELECT EXISTS (
         SELECT 1 FROM public.accounts WHERE account_id = NEW.id
     ) INTO old_account_exists;
 
     IF NOT old_account_exists THEN
-        UPDATE public.accounts
-        SET account_id = NEW.id
+        SELECT account_id INTO orphaned_account_id
+        FROM public.accounts
         WHERE account_id NOT IN (SELECT id FROM auth.users)
-        AND NOT EXISTS (SELECT 1 FROM public.accounts WHERE account_id = NEW.id)
         LIMIT 1;
 
-        IF NOT FOUND THEN
+        IF orphaned_account_id IS NOT NULL THEN
+            UPDATE public.accounts
+            SET account_id = NEW.id
+            WHERE account_id = orphaned_account_id;
+        ELSE
             INSERT INTO public.accounts (account_id, role)
             VALUES (NEW.id, 'user');
         END IF;
