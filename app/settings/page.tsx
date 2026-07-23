@@ -43,29 +43,15 @@ export default function SettingsPage() {
       return
     }
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
+    const { error: updateError } = await supabase.auth.updateUser({
+      email: newEmail
+    })
 
-      if (!session) {
-        setEmailError('You must be logged in to change your email')
-        return
-      }
-
-      const { data, error: updateError } = await supabase.auth.updateUser(
-        { email: newEmail },
-        {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
-      )
-
-      if (updateError) {
-        setEmailError(updateError.message)
-      } else {
-        setEmailSuccess('Email update initiated! Please check both your old and new email addresses for confirmation links.')
-        setNewEmail('')
-      }
-    } catch (err) {
-      setEmailError(err instanceof Error ? err.message : 'An unexpected error occurred')
+    if (updateError) {
+      setEmailError(updateError.message)
+    } else {
+      setEmailSuccess('Email update initiated! Please check both your old and new email addresses for confirmation links.')
+      setNewEmail('')
     }
   }
 
