@@ -8,16 +8,22 @@ export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const [isGuest, setIsGuest] = useState<boolean | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
 
   useEffect(() => {
     const checkUserStatus = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      const guestStatus = localStorage.getItem('is_guest') === 'true'
-
-      setIsGuest(!session && guestStatus)
+      setIsAuthenticated(!!session)
     }
     checkUserStatus()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session)
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [supabase])
 
   const validRoutes = [
@@ -52,7 +58,7 @@ export default function Navbar() {
           </div>
           {/* Settings & Sign Out Buttons */}
           <div className="flex items-center gap-3">
-            {isGuest === false && (
+            {isAuthenticated && (
               <button
                 onClick={() => router.push('/settings')}
                 type="button"
